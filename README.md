@@ -1,14 +1,10 @@
 # pragmaticengineer
 
-A command line for pragmaticengineer.
+Browse [The Pragmatic Engineer](https://newsletter.pragmaticengineer.com/) newsletter from the command line.
 
-`pragmaticengineer` is a single pure-Go binary. It reads public pragmaticengineer data
-over plain HTTPS, shapes it into clean records, and prints output that pipes
+`pragmaticengineer` is a single pure-Go binary. It reads public data from The Pragmatic Engineer
+Substack over plain HTTPS, shapes it into clean records, and prints output that pipes
 into the rest of your tools. No API key, nothing to run alongside it.
-
-The same package is also a [resource-URI driver](#use-it-as-a-resource-uri-driver),
-so a host program like [ant](https://github.com/tamnd/ant) can address
-pragmaticengineer as `pragmaticengineer://` URIs.
 
 ## Install
 
@@ -26,11 +22,23 @@ docker run --rm ghcr.io/tamnd/pragmaticengineer:latest --help
 ## Usage
 
 ```bash
-pragmaticengineer page <path>                      # fetch one page as a record
-pragmaticengineer page <path> -o json              # as JSON, ready for jq
-pragmaticengineer page <path> --template '{{.Body}}'  # just the readable body text
-pragmaticengineer links <path>                     # the pages it links to, one per line
-pragmaticengineer --help                           # the whole command tree
+# List the 25 most recent posts (default)
+pragmaticengineer top
+
+# Table output in the terminal
+pragmaticengineer top -o table
+
+# Get just the URLs
+pragmaticengineer top -o url
+
+# Fetch 10 posts starting at offset 25 (second page)
+pragmaticengineer top --limit 10 --offset 25
+
+# As JSON for jq
+pragmaticengineer top -o json | jq '.[] | select(.audience == "free")'
+
+# CSV for spreadsheets
+pragmaticengineer top -o csv > posts.csv
 ```
 
 Every command shares one output contract: `-o table|json|jsonl|csv|tsv|url|raw`,
@@ -38,10 +46,43 @@ Every command shares one output contract: `-o table|json|jsonl|csv|tsv|url|raw`,
 The default adapts to where output goes (a table on a terminal, JSONL in a
 pipe), so the same command reads well by hand and parses cleanly downstream.
 
-This is a fresh scaffold. It ships one example resource type, `page`, wired end
-to end. Model the real pragmaticengineer records in `pragmaticengineer/` and declare their
-operations in `pragmaticengineer/domain.go`; each one becomes a command, an HTTP
-route, and an MCP tool at once.
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `top` | List recent posts from The Pragmatic Engineer |
+| `version` | Show version information |
+
+## Flags for `top`
+
+```
+--limit int     number of posts to fetch (default 25)
+--offset int    offset for pagination (default 0)
+```
+
+## Global flags
+
+```
+-o, --output string    output format: table|json|jsonl|csv|tsv|url|raw (default "auto")
+-n, --limit int        limit number of records (0 = all)
+    --fields strings   comma-separated columns to include
+    --no-header        omit header row
+    --template string  Go text/template per record
+    --timeout duration per-request timeout (default 30s)
+    --delay duration   minimum spacing between requests
+    --retries int      retry attempts on 429/5xx (default 3)
+```
+
+## Post fields
+
+| Field | Description |
+|-------|-------------|
+| `rank` | Position in the listing (1-based) |
+| `date` | Publication date (YYYY-MM-DD) |
+| `audience` | `free` or `paid` |
+| `title` | Post title |
+| `subtitle` | Post subtitle / summary |
+| `url` | Canonical URL |
 
 ## Serve it
 
@@ -49,36 +90,17 @@ The same operations are available over HTTP and as an MCP tool set for agents,
 with no extra code:
 
 ```bash
-pragmaticengineer serve --addr :7777    # GET /v1/page/<path>  returns NDJSON
+pragmaticengineer serve --addr :7777    # GET /v1/top returns NDJSON
 pragmaticengineer mcp                   # speak MCP over stdio
-```
-
-## Use it as a resource-URI driver
-
-`pragmaticengineer` registers a `pragmaticengineer` domain the way a program registers a
-database driver with `database/sql`. A host enables it with one blank import:
-
-```go
-import _ "github.com/tamnd/pragmaticengineer-cli/pragmaticengineer"
-```
-
-Then [ant](https://github.com/tamnd/ant) (or any program that links the package)
-dereferences `pragmaticengineer://` URIs without knowing anything about pragmaticengineer:
-
-```bash
-ant get pragmaticengineer://page/<path>   # fetch the record
-ant cat pragmaticengineer://page/<path>   # just the body text
-ant ls  pragmaticengineer://page/<path>   # the pages it links to, each addressable
-ant url pragmaticengineer://page/<path>   # the live https URL
 ```
 
 ## Development
 
 ```
 cmd/pragmaticengineer/   thin main: hands cli.NewApp to kit.Run
-cli/                 assembles the kit App from the pragmaticengineer domain
-pragmaticengineer/                the library: HTTP client, data models, and domain.go (the driver)
-docs/                tago documentation site
+cli/                     assembles the kit App from the pragmaticengineer domain
+pragmaticengineer/       the library: HTTP client, data models, and domain.go (the driver)
+docs/                    tago documentation site
 ```
 
 ```bash
@@ -97,9 +119,6 @@ cosign signature:
 git tag v0.1.0
 git push --tags
 ```
-
-The Homebrew and Scoop steps self-disable until their tokens exist, so the first
-release works with no extra secrets.
 
 ## License
 
