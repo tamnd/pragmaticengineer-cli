@@ -57,10 +57,6 @@ func NewClient(cfg Config) *Client {
 	}
 }
 
-// newDefaultClient returns a Client with defaults. Used by the kit domain factory.
-func newDefaultClient() *Client {
-	return NewClient(DefaultConfig())
-}
 
 func (c *Client) get(ctx context.Context, path string) ([]byte, error) {
 	if c.cfg.Rate > 0 {
