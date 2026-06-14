@@ -1,0 +1,10 @@
+title       = "pragmaticengineer"
+baseURL     = "https://pragmaticengineer-cli.tamnd.com/"
+description = "A command line for pragmaticengineer."
+contentDir  = "content"
+outputDir   = "public"
+theme       = "tago-doks"
+syntaxHighlight = "true"
+
+[params]
+github = "https://github.com/tamnd/pragmaticengineer-cli"
