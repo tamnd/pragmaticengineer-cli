@@ -48,6 +48,12 @@ func (Domain) Register(app *kit.App) {
 	kit.Handle(app, kit.OpMeta{Name: "top", Group: "read", List: true,
 		Summary: "List recent posts from The Pragmatic Engineer",
 		Args:    []kit.Arg{}}, topPosts)
+
+	kit.Handle(app, kit.OpMeta{Name: "export", Group: "read", List: true,
+		Summary: "Export all posts as JSONL"}, exportPosts)
+
+	kit.Handle(app, kit.OpMeta{Name: "info", Group: "read", Single: true,
+		Summary: "Show newsletter statistics"}, getNewsletterInfo)
 }
 
 // newClientFactory builds the client from the host-resolved config.
@@ -76,6 +82,14 @@ type topInput struct {
 	Client *Client `kit:"inject"`
 }
 
+type exportInput struct {
+	Client *Client `kit:"inject"`
+}
+
+type infoInput struct {
+	Client *Client `kit:"inject"`
+}
+
 // --- handlers ---
 
 func topPosts(ctx context.Context, in topInput, emit func(*Post) error) error {
@@ -93,6 +107,27 @@ func topPosts(ctx context.Context, in topInput, emit func(*Post) error) error {
 		}
 	}
 	return nil
+}
+
+func exportPosts(ctx context.Context, in exportInput, emit func(*Post) error) error {
+	posts, err := in.Client.AllPosts(ctx)
+	if err != nil {
+		return mapErr(err)
+	}
+	for _, p := range posts {
+		if err := emit(p); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func getNewsletterInfo(ctx context.Context, in infoInput, emit func(*Info) error) error {
+	info, err := in.Client.Stats(ctx)
+	if err != nil {
+		return mapErr(err)
+	}
+	return emit(info)
 }
 
 // Classify turns any accepted input into (type, id). Only "top" is defined for now.

@@ -116,6 +116,36 @@ type apiPost struct {
 	Slug     string `json:"slug"`
 }
 
+// AllPosts fetches all available posts from the Substack API (up to 200).
+func (c *Client) AllPosts(ctx context.Context) ([]*Post, error) {
+	return c.Top(ctx, 200, 0)
+}
+
+// Stats returns aggregate statistics about the newsletter.
+func (c *Client) Stats(ctx context.Context) (*Info, error) {
+	posts, err := c.Top(ctx, 200, 0)
+	if err != nil {
+		return nil, err
+	}
+	info := &Info{
+		TotalPosts:    len(posts),
+		NewsletterURL: c.cfg.BaseURL,
+	}
+	for _, p := range posts {
+		switch p.Audience {
+		case "free":
+			info.FreePosts++
+		case "paid":
+			info.PaidPosts++
+		}
+	}
+	if len(posts) > 0 {
+		info.LatestPost = posts[0].Date
+		info.OldestPost = posts[len(posts)-1].Date
+	}
+	return info, nil
+}
+
 // Top fetches recent posts from The Pragmatic Engineer Substack API.
 func (c *Client) Top(ctx context.Context, limit, offset int) ([]*Post, error) {
 	if limit <= 0 {
